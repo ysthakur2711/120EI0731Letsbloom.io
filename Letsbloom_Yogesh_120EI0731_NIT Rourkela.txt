@@ -1,0 +1,73 @@
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Optional;
+
+@RestController
+@RequestMapping("/api/books")
+class BookController {
+
+    private final BookRepository bookRepository;
+
+    public BookController(BookRepository bookRepository) {
+        this.bookRepository = bookRepository;
+    }
+
+    @GetMapping
+    public ResponseEntity<List<Book>> getAllBooks() {
+        try {
+            List<Book> books = bookRepository.findAll();
+            return new ResponseEntity<>(books, HttpStatus.OK);
+        } catch (Exception e) {
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public ResponseEntity<Book> addNewBook(@RequestBody Book newBook) {
+        try {
+            if (newBook.getTitle() == null || newBook.getAuthor() == null) {
+                return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+            }
+
+            if (bookRepository.existsByTitleAndAuthor(newBook.getTitle(), newBook.getAuthor())) {
+                return new ResponseEntity<>(HttpStatus.CONFLICT);
+            }
+
+            Book savedBook = bookRepository.save(newBook);
+            return new ResponseEntity<>(savedBook, HttpStatus.CREATED);
+        } catch (Exception e) {
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    // Endpoint 3: Update Book Details
+    @PutMapping("/{id}")
+    public ResponseEntity<Book> updateBookDetails(@PathVariable Long id, @RequestBody Book updatedBook) {
+        try {
+            // Check if the book exists
+            Optional<Book> optionalBook = bookRepository.findById(id);
+            if (optionalBook.isEmpty()) {
+                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            }
+
+            Book existingBook = optionalBook.get();
+
+            // Validate the request payload
+            if (updatedBook.getTitle() == null || updatedBook.getAuthor() == null) {
+                return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+            }
+
+            // Update the book details
+            existingBook.setTitle(updatedBook.getTitle());
+            existingBook.setAuthor(updatedBook.getAuthor());
+
+            // Save the updated book to the database
+            Book savedBook = bookRepository.save(existingBook);
+            return new ResponseEntity<>(savedBook, HttpStatus.OK);
+        } catch (Exception e) {
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+}
